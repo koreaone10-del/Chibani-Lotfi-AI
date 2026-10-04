@@ -1,0 +1,33 @@
+:root{
+  --bg:#080b14;--card:#111726;--muted:#8d98ad;--text:#f6f7fb;
+  --line:#232c40;--accent:#7c5cff;--accent2:#9b87ff;--danger:#ff5c7a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#151c32 0,#080b14 48%);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.shell{width:min(760px,100%);margin:auto;padding:18px 14px 50px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}
+.eyebrow{font-size:11px;letter-spacing:2px;color:var(--accent2);font-weight:800}
+h1{font-size:23px;margin:3px 0}
+h2{margin:0 0 8px;font-size:20px}
+p{color:var(--muted);line-height:1.6}
+.card{background:rgba(17,23,38,.92);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.pill{border:1px solid var(--line);border-radius:99px;padding:7px 10px;font-size:11px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;color:#dce2ee;font-size:13px;font-weight:700;margin:12px 0}
+textarea,select{width:100%;margin-top:7px;background:#0b101d;color:var(--text);border:1px solid var(--line);border-radius:13px;padding:12px;font:inherit}
+textarea{min-height:100px;resize:vertical}
+.check{display:flex;align-items:center;gap:9px;font-weight:600}
+.check input{width:18px;height:18px}
+button{border:0;border-radius:13px;padding:12px 15px;font-weight:800;cursor:pointer}
+.primary{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;margin-top:8px}
+.ghost{background:#171e2f;color:#dbe1ed;border:1px solid var(--line)}
+.sectionTitle{display:flex;justify-content:space-between;align-items:center}
+.job{border:1px solid var(--line);border-radius:16px;padding:13px;margin-top:10px}
+.jobHead{display:flex;justify-content:space-between;gap:10px}
+.status{font-size:11px;padding:5px 8px;border-radius:99px;background:#182239;color:#cbd5ea}
+.progress{height:8px;background:#080d18;border-radius:99px;overflow:hidden;margin:11px 0}
+.bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#45d8ff);transition:.3s}
+.job small{color:var(--muted)}
+.download{display:inline-block;margin-top:7px;color:#c6bbff;text-decoration:none;font-weight:800}
+.message{min-height:20px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}.shell{padding:13px 10px 40px}.card{border-radius:18px;padding:15px}}

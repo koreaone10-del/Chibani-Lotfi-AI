@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: chibani-lotfi-ai
+    runtime: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: WORKER_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"

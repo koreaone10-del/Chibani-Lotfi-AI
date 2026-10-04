@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+node_modules/
+.DS_Store
+storage/
+outputs/
+*.mp4
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
