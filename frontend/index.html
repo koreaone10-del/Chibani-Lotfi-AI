@@ -2,121 +2,655 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
   <meta name="theme-color" content="#05060b">
-  <meta name="description" content="Chibani Lotfi AI — استوديو ذكي لصناعة الفيديو بالذكاء الاصطناعي.">
+
+  <meta
+    name="description"
+    content="Chibani Lotfi AI — استوديو ذكي لصناعة الفيديو بالذكاء الاصطناعي."
+  >
+
   <title>Chibani Lotfi AI — AI Video Studio</title>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script src="config.js"></script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- Main CSS -->
+  <link rel="stylesheet" href="/assets/styles.css">
+
+  <!-- Frontend configuration -->
+  <script src="/assets/config.js"></script>
 </head>
+
 <body>
+
+  <!-- Background Effects -->
   <div class="noise" aria-hidden="true"></div>
+
   <div class="aurora aurora-a" aria-hidden="true"></div>
   <div class="aurora aurora-b" aria-hidden="true"></div>
   <div class="aurora aurora-c" aria-hidden="true"></div>
+
   <div class="grid-glow" aria-hidden="true"></div>
 
+
   <main class="app-shell">
+
+    <!-- =====================================================
+         NAVIGATION
+    ====================================================== -->
+
     <header class="nav">
-      <a class="brand" href="#top" aria-label="Chibani Lotfi AI">
-        <span class="brand-mark"><span></span><span></span><span></span></span>
-        <span class="brand-copy"><b>CHIBANI</b><em>AI VIDEO STUDIO</em></span>
+
+      <a
+        class="brand"
+        href="#top"
+        aria-label="Chibani Lotfi AI"
+      >
+
+        <span class="brand-mark">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <span class="brand-copy">
+          <b>CHIBANI</b>
+          <em>AI VIDEO STUDIO</em>
+        </span>
+
       </a>
+
+
       <div class="nav-right">
-        <span class="live-pill"><i></i><span id="apiState">CONNECTING</span></span>
-        <span class="version">STUDIO / 01</span>
+
+        <span class="live-pill">
+          <i></i>
+          <span id="apiState">CONNECTING</span>
+        </span>
+
+        <span class="version">
+          STUDIO / 01
+        </span>
+
       </div>
+
     </header>
 
-    <section id="top" class="hero">
-      <div class="hero-kicker"><span>✦</span> AI-POWERED CREATIVE ENGINE <span>✦</span></div>
-      <h1>حوّل فكرتك إلى<br><strong>فيديو يخطف الانتباه.</strong></h1>
-      <p class="hero-lead">اكتب الفكرة فقط. الاستوديو يتكفّل بالباقي — سيناريو، مشاهد، صوت، ترجمة ومونتاج.</p>
-      <div class="hero-orbit" aria-hidden="true"><span>AI</span><span>VIDEO</span><span>REELS</span></div>
+
+    <!-- =====================================================
+         HERO
+    ====================================================== -->
+
+    <section
+      id="top"
+      class="hero"
+    >
+
+      <div class="hero-kicker">
+        <span>✦</span>
+        AI-POWERED CREATIVE ENGINE
+        <span>✦</span>
+      </div>
+
+
+      <h1>
+        حوّل فكرتك إلى
+        <br>
+        <strong>فيديو يخطف الانتباه.</strong>
+      </h1>
+
+
+      <p class="hero-lead">
+        اكتب الفكرة فقط.
+        الاستوديو يتكفّل بالباقي —
+        سيناريو، مشاهد، صوت، ترجمة ومونتاج.
+      </p>
+
+
+      <div
+        class="hero-orbit"
+        aria-hidden="true"
+      >
+        <span>AI</span>
+        <span>VIDEO</span>
+        <span>REELS</span>
+      </div>
+
     </section>
 
-    <section class="studio-card" aria-label="Video creation studio">
+
+    <!-- =====================================================
+         VIDEO CREATION STUDIO
+    ====================================================== -->
+
+    <section
+      class="studio-card"
+      aria-label="Video creation studio"
+    >
+
       <div class="studio-topline">
-        <div><span class="micro-label">01 / CREATIVE INPUT</span><h2>ما الذي تريد أن نصنعه؟</h2></div>
-        <span class="secure-chip">PRIVATE WORKFLOW · <b>ENCRYPTED</b></span>
+
+        <div>
+
+          <span class="micro-label">
+            01 / CREATIVE INPUT
+          </span>
+
+          <h2>
+            ما الذي تريد أن نصنعه؟
+          </h2>
+
+        </div>
+
+
+        <span class="secure-chip">
+          PRIVATE WORKFLOW ·
+          <b>ENCRYPTED</b>
+        </span>
+
       </div>
+
+
+      <!-- ===================================================
+           CREATION FORM
+      ==================================================== -->
 
       <form id="createForm">
+
+
+        <!-- Prompt -->
         <div class="prompt-wrap">
-          <span class="prompt-icon">✦</span>
-          <textarea id="subject" required maxlength="1000" placeholder="مثال: 5 عادات صغيرة تغيّر حياتك في 30 يوماً..." aria-label="موضوع الفيديو"></textarea>
-          <span class="prompt-count"><b id="promptCount">0</b> / 1000</span>
+
+          <span class="prompt-icon">
+            ✦
+          </span>
+
+          <textarea
+            id="subject"
+            required
+            maxlength="1000"
+            placeholder="مثال: 5 عادات صغيرة تغيّر حياتك في 30 يوماً..."
+            aria-label="موضوع الفيديو"
+          ></textarea>
+
+          <span class="prompt-count">
+            <b id="promptCount">0</b>
+            / 1000
+          </span>
+
         </div>
+
+
+        <!-- =================================================
+             CONTROLS
+        ================================================== -->
 
         <div class="control-zone">
-          <div class="control-heading"><span class="micro-label">02 / DIRECT THE ENGINE</span><span>اضبط رؤيتك</span></div>
-          <div class="control-grid">
-            <label class="control-card"><span class="control-icon">◉</span><span class="control-copy"><small>LANGUAGE</small><strong>اللغة</strong></span>
-              <select id="language"><option value="ar">العربية</option><option value="fr">Français</option><option value="en">English</option></select>
-            </label>
-            <label class="control-card"><span class="control-icon">▣</span><span class="control-copy"><small>FORMAT</small><strong>المقاس</strong></span>
-              <select id="aspect_ratio"><option value="9:16">9:16 · Reels / Shorts</option><option value="1:1">1:1 · Square</option><option value="16:9">16:9 · YouTube</option></select>
-            </label>
-            <label class="control-card"><span class="control-icon">◷</span><span class="control-copy"><small>DURATION</small><strong>المدة</strong></span>
-              <select id="duration"><option value="30">30 ثانية</option><option value="45">45 ثانية</option><option value="60">60 ثانية</option><option value="90">90 ثانية</option><option value="120">120 ثانية</option></select>
-            </label>
-            <label class="control-card"><span class="control-icon">✺</span><span class="control-copy"><small>VISUALS</small><strong>المصادر</strong></span>
-              <select id="video_source"><option value="pexels">Pexels</option><option value="pixabay">Pixabay</option><option value="coverr">Coverr</option><option value="local">Local</option></select>
-            </label>
-            <label class="control-card"><span class="control-icon">◖</span><span class="control-copy"><small>VOICE</small><strong>الصوت</strong></span>
-              <select id="voice"><option value="edge">Edge TTS · مجاني</option><option value="none">بدون صوت</option></select>
-            </label>
-            <label class="control-card"><span class="control-icon">Aa</span><span class="control-copy"><small>CAPTIONS</small><strong>الترجمة</strong></span>
-              <select id="subtitle_provider"><option value="edge">Edge timing · سريع</option><option value="whisper">Whisper · أدق</option><option value="none">بدون</option></select>
-            </label>
+
+          <div class="control-heading">
+
+            <span class="micro-label">
+              02 / DIRECT THE ENGINE
+            </span>
+
+            <span>
+              اضبط رؤيتك
+            </span>
+
           </div>
+
+
+          <div class="control-grid">
+
+
+            <!-- Language -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                ◉
+              </span>
+
+              <span class="control-copy">
+                <small>LANGUAGE</small>
+                <strong>اللغة</strong>
+              </span>
+
+              <select id="language">
+                <option value="ar">
+                  العربية
+                </option>
+
+                <option value="fr">
+                  Français
+                </option>
+
+                <option value="en">
+                  English
+                </option>
+              </select>
+
+            </label>
+
+
+            <!-- Aspect Ratio -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                ▣
+              </span>
+
+              <span class="control-copy">
+                <small>FORMAT</small>
+                <strong>المقاس</strong>
+              </span>
+
+              <select id="aspect_ratio">
+
+                <option value="9:16">
+                  9:16 · Reels / Shorts
+                </option>
+
+                <option value="1:1">
+                  1:1 · Square
+                </option>
+
+                <option value="16:9">
+                  16:9 · YouTube
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <!-- Duration -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                ◷
+              </span>
+
+              <span class="control-copy">
+                <small>DURATION</small>
+                <strong>المدة</strong>
+              </span>
+
+              <select id="duration">
+
+                <option value="30">
+                  30 ثانية
+                </option>
+
+                <option value="45">
+                  45 ثانية
+                </option>
+
+                <option value="60">
+                  60 ثانية
+                </option>
+
+                <option value="90">
+                  90 ثانية
+                </option>
+
+                <option value="120">
+                  120 ثانية
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <!-- Visual Source -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                ✺
+              </span>
+
+              <span class="control-copy">
+                <small>VISUALS</small>
+                <strong>المصادر</strong>
+              </span>
+
+              <select id="video_source">
+
+                <option value="pexels">
+                  Pexels
+                </option>
+
+                <option value="pixabay">
+                  Pixabay
+                </option>
+
+                <option value="coverr">
+                  Coverr
+                </option>
+
+                <option value="local">
+                  Local
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <!-- Voice -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                ◖
+              </span>
+
+              <span class="control-copy">
+                <small>VOICE</small>
+                <strong>الصوت</strong>
+              </span>
+
+              <select id="voice">
+
+                <option value="edge">
+                  Edge TTS · مجاني
+                </option>
+
+                <option value="none">
+                  بدون صوت
+                </option>
+
+              </select>
+
+            </label>
+
+
+            <!-- Captions -->
+            <label class="control-card">
+
+              <span class="control-icon">
+                Aa
+              </span>
+
+              <span class="control-copy">
+                <small>CAPTIONS</small>
+                <strong>الترجمة</strong>
+              </span>
+
+              <select id="subtitle_provider">
+
+                <option value="edge">
+                  Edge timing · سريع
+                </option>
+
+                <option value="whisper">
+                  Whisper · أدق
+                </option>
+
+                <option value="none">
+                  بدون
+                </option>
+
+              </select>
+
+            </label>
+
+          </div>
+
         </div>
+
+
+        <!-- =================================================
+             SMART OPTIONS
+        ================================================== -->
 
         <div class="smart-row">
-          <label class="smart-option"><input id="subtitles" type="checkbox" checked><span class="toggle"></span><span><b>Auto Captions</b><small>ترجمة تلقائية</small></span></label>
-          <label class="smart-option"><input id="music" type="checkbox" checked><span class="toggle"></span><span><b>Music Layer</b><small>موسيقى خلفية</small></span></label>
-          <div class="ai-badge"><span>✦</span><b>AI READY</b><small>ENGINE ONLINE</small></div>
+
+
+          <!-- Auto Captions -->
+          <label class="smart-option">
+
+            <input
+              id="subtitles"
+              type="checkbox"
+              checked
+            >
+
+            <span class="toggle"></span>
+
+            <span>
+              <b>Auto Captions</b>
+              <small>ترجمة تلقائية</small>
+            </span>
+
+          </label>
+
+
+          <!-- Music -->
+          <label class="smart-option">
+
+            <input
+              id="music"
+              type="checkbox"
+              checked
+            >
+
+            <span class="toggle"></span>
+
+            <span>
+              <b>Music Layer</b>
+              <small>موسيقى خلفية</small>
+            </span>
+
+          </label>
+
+
+          <!-- AI Status -->
+          <div class="ai-badge">
+
+            <span>
+              ✦
+            </span>
+
+            <b>
+              AI READY
+            </b>
+
+            <small>
+              ENGINE ONLINE
+            </small>
+
+          </div>
+
         </div>
 
-        <button class="create-btn" type="submit">
-          <span class="btn-shine"></span><span class="btn-text">إنشاء الفيديو</span><span class="btn-arrow">↗</span>
+
+        <!-- =================================================
+             CREATE BUTTON
+        ================================================== -->
+
+        <button
+          class="create-btn"
+          type="submit"
+        >
+
+          <span class="btn-shine"></span>
+
+          <span class="btn-text">
+            إنشاء الفيديو
+          </span>
+
+          <span class="btn-arrow">
+            ↗
+          </span>
+
         </button>
-        <p id="message" class="message" role="status"></p>
+
+
+        <!-- API Message -->
+        <p
+          id="message"
+          class="message"
+          role="status"
+        ></p>
+
       </form>
+
     </section>
 
-    <section class="workflow-strip" aria-label="Workflow">
-      <div><span>01</span><b>IDEA</b><small>فكرة</small></div><i>→</i>
-      <div><span>02</span><b>AI</b><small>معالجة</small></div><i>→</i>
-      <div><span>03</span><b>RENDER</b><small>إخراج</small></div><i>→</i>
-      <div><span>04</span><b>READY</b><small>جاهز</small></div>
+
+    <!-- =====================================================
+         WORKFLOW
+    ====================================================== -->
+
+    <section
+      class="workflow-strip"
+      aria-label="Workflow"
+    >
+
+      <div>
+        <span>01</span>
+        <b>IDEA</b>
+        <small>فكرة</small>
+      </div>
+
+      <i>→</i>
+
+      <div>
+        <span>02</span>
+        <b>AI</b>
+        <small>معالجة</small>
+      </div>
+
+      <i>→</i>
+
+      <div>
+        <span>03</span>
+        <b>RENDER</b>
+        <small>إخراج</small>
+      </div>
+
+      <i>→</i>
+
+      <div>
+        <span>04</span>
+        <b>READY</b>
+        <small>جاهز</small>
+      </div>
+
     </section>
+
+
+    <!-- =====================================================
+         JOB QUEUE
+    ====================================================== -->
 
     <section class="jobs-section">
+
       <div class="section-head">
-        <div><span class="micro-label">03 / OUTPUT QUEUE</span><h2>استوديو المهام</h2></div>
-        <button id="refresh" class="refresh-btn" type="button"><span>↻</span> تحديث</button>
+
+        <div>
+
+          <span class="micro-label">
+            03 / OUTPUT QUEUE
+          </span>
+
+          <h2>
+            استوديو المهام
+          </h2>
+
+        </div>
+
+
+        <button
+          id="refresh"
+          class="refresh-btn"
+          type="button"
+        >
+
+          <span>↻</span>
+          تحديث
+
+        </button>
+
       </div>
-      <div id="jobs" class="jobs"></div>
+
+
+      <div
+        id="jobs"
+        class="jobs"
+      ></div>
+
     </section>
 
-    <footer class="footer"><span>CHIBANI LOTFI AI</span><span>BUILDING THE FUTURE OF VIDEO · 2026</span></footer>
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+
+    <footer class="footer">
+
+      <span>
+        CHIBANI LOTFI AI
+      </span>
+
+      <span>
+        BUILDING THE FUTURE OF VIDEO · 2026
+      </span>
+
+    </footer>
+
   </main>
+
+
+  <!-- =======================================================
+       PROMPT COUNTER
+  ======================================================== -->
 
   <script>
     (() => {
-      const input = document.getElementById('subject');
-      const count = document.getElementById('promptCount');
+
+      const input =
+        document.getElementById("subject");
+
+      const count =
+        document.getElementById("promptCount");
+
       if (input && count) {
-        const update = () => count.textContent = input.value.length;
-        input.addEventListener('input', update);
+
+        const update = () => {
+          count.textContent =
+            input.value.length;
+        };
+
+        input.addEventListener(
+          "input",
+          update
+        );
+
         update();
       }
+
     })();
   </script>
-  <script src="app.js"></script>
+
+
+  <!-- =======================================================
+       MAIN APPLICATION
+  ======================================================== -->
+
+  <script src="/assets/app.js"></script>
+
 </body>
 </html>
