@@ -52,7 +52,7 @@ select{
 }
 
 /* =========================================================
-   BACKGROUND — desktop premium / mobile lightweight
+   BACKGROUND
    ========================================================= */
 
 .noise{
@@ -321,7 +321,7 @@ select{
     0 30px 90px rgba(0,0,0,.34),
     inset 0 1px 0 rgba(255,255,255,.035);
   overflow:hidden;
-  contain:paint;
+  contain:layout paint;
 }
 
 .studio-card:before{
@@ -331,7 +331,13 @@ select{
   right:10%;
   top:0;
   height:1px;
-  background:linear-gradient(90deg,transparent,rgba(124,92,255,.7),rgba(0,212,255,.6),transparent);
+  background:linear-gradient(
+    90deg,
+    transparent,
+    rgba(124,92,255,.7),
+    rgba(0,212,255,.6),
+    transparent
+  );
 }
 
 .studio-topline{
@@ -459,6 +465,7 @@ select{
   border-radius:17px;
   background:rgba(7,11,18,.52);
   transition:border-color .2s ease,transform .2s ease,background .2s ease;
+  contain:layout paint;
 }
 
 .control-card:hover{
@@ -526,6 +533,7 @@ select option{
   border-radius:15px;
   background:rgba(7,11,18,.48);
   cursor:pointer;
+  contain:layout paint;
 }
 
 .smart-option span{
@@ -606,6 +614,7 @@ select option{
     inset 0 1px 0 rgba(255,255,255,.2);
   transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;
   animation:buttonGradient 8s ease infinite;
+  transform:translateZ(0);
 }
 
 .create-btn:hover{
@@ -629,7 +638,12 @@ select option{
   position:absolute;
   inset:0;
   pointer-events:none;
-  background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.14) 50%,transparent 75%);
+  background:linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255,255,255,.14) 50%,
+    transparent 75%
+  );
   transform:translateX(-100%);
   animation:buttonShine 5s ease-in-out infinite;
 }
@@ -650,13 +664,23 @@ select option{
 }
 
 @keyframes buttonGradient{
-  0%,100%{background-position:0% 50%}
-  50%{background-position:100% 50%}
+  0%,100%{
+    background-position:0% 50%;
+  }
+
+  50%{
+    background-position:100% 50%;
+  }
 }
 
 @keyframes buttonShine{
-  0%,55%{transform:translateX(-110%)}
-  75%,100%{transform:translateX(110%)}
+  0%,55%{
+    transform:translateX(-110%);
+  }
+
+  75%,100%{
+    transform:translateX(110%);
+  }
 }
 
 /* =========================================================
@@ -692,6 +716,7 @@ select option{
   border:1px solid var(--line);
   border-radius:18px;
   background:var(--line);
+  contain:layout paint;
 }
 
 .workflow-strip > div{
@@ -718,7 +743,7 @@ select option{
 .jobs-section{
   margin-top:52px;
   content-visibility:auto;
-  contain-intrinsic-size:500px;
+  contain-intrinsic-size:600px;
 }
 
 .section-head{
@@ -754,6 +779,7 @@ select option{
   border:1px solid var(--line);
   border-radius:16px;
   background:rgba(10,14,22,.62);
+  contain:layout paint;
 }
 
 .jobHead{
@@ -831,6 +857,8 @@ select option{
   text-align:center;
   font-size:9px;
   letter-spacing:.08em;
+  content-visibility:auto;
+  contain-intrinsic-size:100px;
 }
 
 /* =========================================================
@@ -843,6 +871,23 @@ select option{
 }
 
 /* =========================================================
+   PERFORMANCE ISOLATION
+   ========================================================= */
+
+.aurora,
+.grid-glow,
+.noise{
+  pointer-events:none;
+}
+
+.studio-card,
+.control-card,
+.smart-option,
+.job{
+  contain:layout paint;
+}
+
+/* =========================================================
    TABLET
    ========================================================= */
 
@@ -851,10 +896,12 @@ select option{
   .app-shell{
     width:min(100% - 24px,680px);
     padding-top:15px;
+    transform:translateZ(0);
   }
 
   .hero{
     padding-top:58px;
+    contain:layout paint;
   }
 
   .hero-orbit{
@@ -875,12 +922,24 @@ select option{
 
   .studio-card{
     padding:20px;
+    contain:layout paint style;
+    box-shadow:0 18px 50px rgba(0,0,0,.26);
+  }
+
+  .control-card,
+  .smart-option,
+  .job{
+    contain:layout paint;
+  }
+
+  .hero h1,
+  .hero-lead{
+    text-rendering:optimizeSpeed;
   }
 
   /*
-   * IMPORTANT:
-   * Mobile GPU optimization.
-   * Remove expensive blur/backdrop effects.
+   * Remove expensive blur and animation
+   * from the decorative background.
    */
 
   .aurora-a,
@@ -915,8 +974,12 @@ select option{
     background-size:72px 72px;
   }
 
-  .studio-card{
-    box-shadow:0 18px 50px rgba(0,0,0,.26);
+  .create-btn{
+    animation:none;
+  }
+
+  .btn-shine{
+    display:none;
   }
 }
 
@@ -932,13 +995,18 @@ select option{
 
   body{
     background:
-      radial-gradient(circle at 50% -10%,rgba(124,92,255,.09),transparent 35%),
+      radial-gradient(
+        circle at 50% -10%,
+        rgba(124,92,255,.09),
+        transparent 35%
+      ),
       #05070d;
   }
 
   .app-shell{
     width:calc(100% - 16px);
     padding:10px 0 35px;
+    transform:none;
   }
 
   .nav{
@@ -975,6 +1043,7 @@ select option{
 
   .hero{
     padding:42px 8px 24px;
+    contain:layout paint;
   }
 
   .hero-kicker{
@@ -987,12 +1056,14 @@ select option{
     font-size:clamp(37px,12vw,55px);
     line-height:1;
     letter-spacing:-.06em;
+    text-rendering:geometricPrecision;
   }
 
   .hero-lead{
     margin-top:16px;
     font-size:12px;
     line-height:1.7;
+    text-rendering:optimizeSpeed;
   }
 
   .studio-card{
@@ -1001,6 +1072,7 @@ select option{
     border-radius:19px;
     background:rgba(9,13,21,.94);
     box-shadow:0 15px 45px rgba(0,0,0,.25);
+    contain:layout paint;
   }
 
   .studio-topline{
@@ -1087,7 +1159,12 @@ select option{
     margin-top:8px;
     border-radius:14px;
     animation:none;
-    background:linear-gradient(110deg,#6248e9,#7c5cff,#00bfe8);
+    background:linear-gradient(
+      110deg,
+      #6248e9,
+      #7c5cff,
+      #00bfe8
+    );
   }
 
   .btn-shine{
@@ -1114,6 +1191,8 @@ select option{
 
   .jobs-section{
     margin-top:34px;
+    content-visibility:auto;
+    contain-intrinsic-size:500px;
   }
 
   .section-head h2{
@@ -1130,25 +1209,47 @@ select option{
   }
 
   /*
-   * ZERO expensive visual effects on small phones.
+   * ZERO expensive visual effects
+   * on small phones.
    */
 
   .aurora{
     filter:none !important;
     animation:none !important;
     will-change:auto;
+    opacity:.28;
   }
 
   .noise{
-    display:none;
+    display:none !important;
   }
 
   .grid-glow{
-    opacity:.055;
+    opacity:.035;
   }
 
   .studio-card:before{
     opacity:.5;
+  }
+
+  /*
+   * Avoid hover work on touch devices.
+   */
+
+  .control-card:hover,
+  .create-btn:hover{
+    transform:none;
+  }
+
+  /*
+   * Faster touch response.
+   */
+
+  button,
+  select,
+  input,
+  textarea{
+    touch-action:manipulation;
   }
 }
 
