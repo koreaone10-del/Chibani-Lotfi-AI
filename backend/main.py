@@ -7,76 +7,62 @@ import urllib.request
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 
-# =========================================================
-# APP CONFIG
-# =========================================================
+# ============================================================
+# CONFIG
+# ============================================================
 
 APP_NAME = "Chibani Lotfi AI API"
 
 WORKER_API_KEY = os.getenv("WORKER_API_KEY", "")
 
-GITHUB_DISPATCH_TOKEN = os.getenv(
-    "GITHUB_DISPATCH_TOKEN",
-    "",
-)
+# Secret used by GitHub Worker -> Render callback
+RENDER_CALLBACK_SECRET = os.getenv("RENDER_CALLBACK_SECRET", "")
 
-GITHUB_OWNER = os.getenv(
-    "GITHUB_OWNER",
-    "koreaone10-del",
-)
-
-GITHUB_REPO = os.getenv(
-    "GITHUB_REPO",
-    "MPT-Worker-POC",
-)
-
-GITHUB_EVENT_TYPE = os.getenv(
-    "GITHUB_EVENT_TYPE",
-    "mpt_job",
-)
-
+# GitHub repository used as compute worker
+GITHUB_DISPATCH_TOKEN = os.getenv("GITHUB_DISPATCH_TOKEN", "")
+GITHUB_OWNER = os.getenv("GITHUB_OWNER", "koreaone10-del")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "MPT-Worker-POC")
+GITHUB_EVENT_TYPE = os.getenv("GITHUB_EVENT_TYPE", "mpt_job")
 GITHUB_API_URL = os.getenv(
     "GITHUB_API_URL",
     "https://api.github.com",
 ).rstrip("/")
 
-
-# =========================================================
-# IN-MEMORY JOB STORE
-# =========================================================
-
-JOBS = {}
+# Frontend
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
-# =========================================================
-# FASTAPI
-# =========================================================
+# ============================================================
+# APP
+# ============================================================
 
 app = FastAPI(
     title=APP_NAME,
-    version="0.4.0",
+    version="1.0.0",
 )
 
 
-# =========================================================
+# ============================================================
 # CORS
-# =========================================================
+# ============================================================
 
-cors_origins = [
-    origin.strip()
-    for origin in os.getenv(
-        "CORS_ORIGINS",
-        "*",
-    ).split(",")
-    if origin.strip()
-]
+cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
+
+if cors_origins_raw.strip() == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = [
+        origin.strip()
+        for origin in cors_origins_raw.split(",")
+        if origin.strip()
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -87,33 +73,19 @@ app.add_middleware(
 )
 
 
-# =========================================================
-# WORKER AUTH
-# =========================================================
+# ============================================================
+# IN-MEMORY JOB STORE
+# ============================================================
 
-def worker_auth(
-    x_worker_key: Optional[str],
-):
-    if (
-        WORKER_API_KEY
-        and x_worker_key != WORKER_API_KEY
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid worker key",
-        )
+JOBS: dict[str, dict] = {}
 
 
-# =========================================================
-# CREATE JOB MODEL
-# =========================================================
+# ============================================================
+# MODELS
+# ============================================================
 
 class CreateJob(BaseModel):
-
-    subject: str = Field(
-        min_length=2,
-        max_length=500,
-    )
+    subject: str = Field(..., min_length=2, max_length=500)
 
     language: str = "ar"
 
@@ -144,42 +116,88 @@ class CreateJob(BaseModel):
     music: bool = True
 
 
-# =========================================================
-# WORKER UPDATE MODEL
-# =========================================================
-
 class WorkerUpdate(BaseModel):
-
     status: str
 
     progress: int = Field(
+        default=0,
         ge=0,
         le=100,
     )
 
-    stage: str
+    stage: str = ""
 
     output_url: Optional[str] = None
 
     error: Optional[str] = None
 
 
-# =========================================================
-# GITHUB DISPATCH
-# =========================================================
+class WorkerCallback(BaseModel):
+    status: str
+
+    progress: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+    )
+
+    stage: str = ""
+
+    output_url: Optional[str] = None
+
+    error: Optional[str] = None
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def now() -> float:
+    return time.time()
+
+
+def worker_authorized(request: Request) -> bool:
+    """
+    Validate the old worker API key.
+    """
+    if not WORKER_API_KEY:
+        return False
+
+    provided = request.headers.get("X-Worker-Key", "")
+
+    return provided == WORKER_API_KEY
+
+
+def callback_authorized(request: Request) -> bool:
+    """
+    Validate GitHub Worker -> Render callback secret.
+    """
+    if not RENDER_CALLBACK_SECRET:
+        return False
+
+    provided = request.headers.get(
+        "X-Callback-Secret",
+        "",
+    )
+
+    return provided == RENDER_CALLBACK_SECRET
+
+
+def clamp_progress(value: int) -> int:
+    return max(0, min(100, int(value)))
+
 
 def dispatch_to_github(
     job_id: str,
-    payload: CreateJob,
-):
+    payload: dict,
+) -> None:
     """
-    Trigger the MPT Worker GitHub Actions workflow
-    using repository_dispatch.
+    Trigger GitHub Actions using repository_dispatch.
     """
 
     if not GITHUB_DISPATCH_TOKEN:
         raise RuntimeError(
-            "GITHUB_DISPATCH_TOKEN is not configured on Render."
+            "GITHUB_DISPATCH_TOKEN is not configured"
         )
 
     url = (
@@ -188,30 +206,28 @@ def dispatch_to_github(
         f"/dispatches"
     )
 
-    # Keep the top-level client_payload small.
-    # GitHub supports client_payload for custom workflow data.
-    client_payload = {
-        "job_id": job_id,
-
-        "video_subject": payload.subject,
-
-        "aspect": payload.aspect_ratio,
-
-        "video_count": payload.video_count,
-
-        # Preserve the complete original request
-        # for future Worker versions.
-        "request": payload.model_dump(),
-    }
-
     body = {
         "event_type": GITHUB_EVENT_TYPE,
-        "client_payload": client_payload,
+        "client_payload": {
+            "job_id": job_id,
+            "video_subject": payload.get("subject", ""),
+            "aspect": payload.get(
+                "aspect_ratio",
+                "9:16",
+            ),
+            "video_count": payload.get(
+                "video_count",
+                1,
+            ),
+            "request": payload,
+        },
     }
+
+    data = json.dumps(body).encode("utf-8")
 
     request = urllib.request.Request(
         url,
-        data=json.dumps(body).encode("utf-8"),
+        data=data,
         method="POST",
         headers={
             "Accept": "application/vnd.github+json",
@@ -225,98 +241,79 @@ def dispatch_to_github(
     )
 
     try:
-
         with urllib.request.urlopen(
             request,
-            timeout=20,
+            timeout=30,
         ) as response:
 
             status_code = response.status
 
             if status_code != 204:
-                raise RuntimeError(
-                    f"GitHub dispatch returned HTTP {status_code}"
+                response_body = response.read().decode(
+                    "utf-8",
+                    errors="replace",
                 )
 
-            return True
+                raise RuntimeError(
+                    "GitHub dispatch returned "
+                    f"HTTP {status_code}: "
+                    f"{response_body[:500]}"
+                )
 
-    except urllib.error.HTTPError as error:
+    except urllib.error.HTTPError as exc:
 
-        # Never expose the GitHub token.
-        try:
-            response_body = (
-                error.read()
-                .decode("utf-8", errors="replace")
-            )
-        except Exception:
-            response_body = ""
-
-        # GitHub dispatch normally returns 204.
-        # Any other status means the dispatch failed.
-        raise RuntimeError(
-            f"GitHub dispatch failed: "
-            f"HTTP {error.code}"
-            + (
-                f" - {response_body[:500]}"
-                if response_body
-                else ""
-            )
-        ) from error
-
-    except urllib.error.URLError as error:
+        error_body = exc.read().decode(
+            "utf-8",
+            errors="replace",
+        )
 
         raise RuntimeError(
-            f"Unable to reach GitHub API: {error.reason}"
-        ) from error
+            "GitHub dispatch failed "
+            f"HTTP {exc.code}: "
+            f"{error_body[:500]}"
+        ) from exc
 
-    except Exception as error:
+    except urllib.error.URLError as exc:
 
         raise RuntimeError(
-            f"GitHub dispatch error: {error}"
-        ) from error
+            f"GitHub dispatch network error: {exc}"
+        ) from exc
 
 
-# =========================================================
+# ============================================================
 # HEALTH
-# =========================================================
+# ============================================================
 
 @app.get("/health")
-async def health():
-
+def health():
     return {
         "ok": True,
         "service": APP_NAME,
-        "time": time.time(),
-
-        # Safe diagnostic information.
-        # Never expose the token itself.
+        "time": now(),
         "github_dispatch_configured": bool(
             GITHUB_DISPATCH_TOKEN
         ),
-
-        "github_repository": (
-            f"{GITHUB_OWNER}/{GITHUB_REPO}"
-        ),
-
+        "github_repository": GITHUB_REPO,
         "github_event_type": GITHUB_EVENT_TYPE,
+        "callback_configured": bool(
+            RENDER_CALLBACK_SECRET
+        ),
     }
 
 
-# =========================================================
+# ============================================================
 # CREATE JOB
-# =========================================================
+# ============================================================
 
 @app.post("/api/jobs")
-async def create_job(
-    payload: CreateJob,
-):
+def create_job(payload: CreateJob):
 
     job_id = str(uuid.uuid4())
 
-    now = time.time()
+    created_at = now()
 
     job = {
-        "id": job_id,
+        "job_id": job_id,
 
         "status": "queued",
 
@@ -324,99 +321,121 @@ async def create_job(
 
         "stage": "queued",
 
-        "created_at": now,
+        "created_at": created_at,
 
-        "updated_at": now,
-
-        "request": payload.model_dump(),
+        "updated_at": created_at,
 
         "output_url": None,
 
         "error": None,
+
+        "request": payload.model_dump(),
     }
 
     JOBS[job_id] = job
 
-    # -----------------------------------------------------
-    # SEND JOB TO GITHUB ACTIONS
-    # -----------------------------------------------------
-
     try:
 
         dispatch_to_github(
-            job_id=job_id,
-            payload=payload,
+            job_id,
+            payload.model_dump(),
         )
 
-    except Exception as error:
+        job["status"] = "dispatched"
+        job["progress"] = 1
+        job["stage"] = "github_actions"
+        job["updated_at"] = now()
 
-        job.update(
-            {
-                "status": "failed",
+    except Exception as exc:
 
-                "stage": "github_dispatch_failed",
+        job["status"] = "failed"
+        job["progress"] = 100
+        job["stage"] = "dispatch_failed"
+        job["error"] = str(exc)
+        job["updated_at"] = now()
 
-                "progress": 0,
-
-                "error": str(error),
-
-                "updated_at": time.time(),
-            }
-        )
-
-        # Return a useful API error to the frontend.
         raise HTTPException(
             status_code=502,
             detail={
-                "message": "Failed to dispatch job to GitHub Actions.",
+                "message": "Unable to start GitHub Worker",
                 "job_id": job_id,
-                "error": str(error),
+                "error": str(exc),
             },
         )
-
-    # -----------------------------------------------------
-    # DISPATCH SUCCESS
-    # -----------------------------------------------------
-
-    job.update(
-        {
-            "status": "dispatched",
-
-            "stage": "github_actions",
-
-            "progress": 1,
-
-            "updated_at": time.time(),
-        }
-    )
 
     return job
 
 
-# =========================================================
+# ============================================================
 # LIST JOBS
-# =========================================================
+# ============================================================
 
 @app.get("/api/jobs")
-async def list_jobs():
+def list_jobs():
 
-    return list(
-        reversed(
-            list(
-                JOBS.values()
-            )
-        )
-    )[:30]
+    jobs = list(JOBS.values())
+
+    jobs.sort(
+        key=lambda item: item.get(
+            "created_at",
+            0,
+        ),
+        reverse=True,
+    )
+
+    return jobs[:30]
 
 
-# =========================================================
-# GET SINGLE JOB
-# =========================================================
+# ============================================================
+# GET JOB
+# ============================================================
 
 @app.get("/api/jobs/{job_id}")
-async def get_job(
+def get_job(job_id: str):
+
+    job = JOBS.get(job_id)
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found",
+        )
+
+    return job
+
+
+# ============================================================
+# GITHUB WORKER CALLBACK
+# ============================================================
+
+@app.post("/api/worker/jobs/{job_id}/callback")
+def worker_callback(
     job_id: str,
+    update: WorkerCallback,
+    request: Request,
 ):
+
+    # --------------------------------------------------------
+    # SECURITY
+    # --------------------------------------------------------
+
+    if not RENDER_CALLBACK_SECRET:
+
+        raise HTTPException(
+            status_code=500,
+            detail="RENDER_CALLBACK_SECRET is not configured",
+        )
+
+    if not callback_authorized(request):
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid callback secret",
+        )
+
+    # --------------------------------------------------------
+    # JOB
+    # --------------------------------------------------------
 
     job = JOBS.get(job_id)
 
@@ -427,67 +446,105 @@ async def get_job(
             detail="Job not found",
         )
 
-    return job
+    # --------------------------------------------------------
+    # UPDATE
+    # --------------------------------------------------------
 
+    job["status"] = update.status
 
-# =========================================================
-# LEGACY WORKER QUEUE ENDPOINT
-# =========================================================
-
-@app.get("/api/worker/jobs/next")
-async def worker_next(
-    x_worker_key: Optional[str] = Header(None),
-):
-
-    worker_auth(
-        x_worker_key
+    job["progress"] = clamp_progress(
+        update.progress
     )
 
-    for job in JOBS.values():
+    job["stage"] = update.stage
 
-        if job["status"] == "queued":
+    job["updated_at"] = now()
 
-            job.update(
-                {
-                    "status": "processing",
+    if update.output_url:
 
-                    "stage": "claimed",
+        job["output_url"] = update.output_url
 
-                    "progress": 1,
+    if update.error:
 
-                    "updated_at": time.time(),
-                }
-            )
+        job["error"] = update.error
 
-            return {
-                "job": job
-            }
+    # --------------------------------------------------------
+    # FINAL STATES
+    # --------------------------------------------------------
+
+    if update.status == "completed":
+
+        job["progress"] = 100
+
+        job["stage"] = (
+            update.stage or "completed"
+        )
+
+    elif update.status == "failed":
+
+        if job["progress"] < 100:
+            job["progress"] = 100
+
+        job["stage"] = (
+            update.stage or "failed"
+        )
 
     return {
-        "job": None
+        "ok": True,
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job["progress"],
+        "stage": job["stage"],
     }
 
 
-# =========================================================
-# WORKER UPDATE
-# =========================================================
+# ============================================================
+# LEGACY WORKER POLLING ENDPOINT
+# ============================================================
 
-@app.post(
-    "/api/worker/jobs/{job_id}/update"
-)
-async def worker_update(
+@app.get("/api/worker/jobs/next")
+def worker_next_job(request: Request):
+
+    if not worker_authorized(request):
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid worker key",
+        )
+
+    for job in JOBS.values():
+
+        if job.get("status") == "queued":
+
+            job["status"] = "processing"
+            job["progress"] = 5
+            job["stage"] = "worker_started"
+            job["updated_at"] = now()
+
+            return job
+
+    return None
+
+
+# ============================================================
+# LEGACY WORKER UPDATE ENDPOINT
+# ============================================================
+
+@app.post("/api/worker/jobs/{job_id}/update")
+def update_job_from_worker(
     job_id: str,
-    payload: WorkerUpdate,
-    x_worker_key: Optional[str] = Header(None),
+    update: WorkerUpdate,
+    request: Request,
 ):
 
-    worker_auth(
-        x_worker_key
-    )
+    if not worker_authorized(request):
 
-    job = JOBS.get(
-        job_id
-    )
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid worker key",
+        )
+
+    job = JOBS.get(job_id)
 
     if not job:
 
@@ -496,30 +553,36 @@ async def worker_update(
             detail="Job not found",
         )
 
-    job.update(
-        payload.model_dump()
+    job["status"] = update.status
+
+    job["progress"] = clamp_progress(
+        update.progress
     )
 
-    job["updated_at"] = time.time()
+    job["stage"] = update.stage
 
-    return job
+    job["updated_at"] = now()
+
+    if update.output_url:
+
+        job["output_url"] = update.output_url
+
+    if update.error:
+
+        job["error"] = update.error
+
+    return {
+        "ok": True,
+        "job": job,
+    }
 
 
-# =========================================================
+# ============================================================
 # DELETE JOB
-# =========================================================
+# ============================================================
 
-@app.delete(
-    "/api/jobs/{job_id}"
-)
-async def delete_job(
-    job_id: str,
-    x_worker_key: Optional[str] = Header(None),
-):
-
-    worker_auth(
-        x_worker_key
-    )
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: str):
 
     if job_id not in JOBS:
 
@@ -531,61 +594,70 @@ async def delete_job(
     del JOBS[job_id]
 
     return {
-        "ok": True
+        "ok": True,
+        "job_id": job_id,
     }
 
 
-# =========================================================
-# FRONTEND
-# =========================================================
-
-FRONTEND_DIR = (
-    Path(__file__)
-    .resolve()
-    .parent.parent
-    / "frontend"
-)
-
+# ============================================================
+# FRONTEND STATIC FILES
+# ============================================================
 
 if FRONTEND_DIR.exists():
 
-    app.mount(
-        "/assets",
-        StaticFiles(
-            directory=FRONTEND_DIR
-        ),
-        name="assets",
-    )
+    assets_dir = FRONTEND_DIR / "assets"
+
+    if assets_dir.exists():
+
+        app.mount(
+            "/assets",
+            StaticFiles(
+                directory=str(assets_dir)
+            ),
+            name="assets",
+        )
 
 
-# =========================================================
-# INDEX
-# =========================================================
+# ============================================================
+# FRONTEND
+# ============================================================
 
 @app.get("/")
-async def index():
+def frontend():
 
-    return FileResponse(
-        FRONTEND_DIR / "index.html"
-    )
+    index_file = FRONTEND_DIR / "index.html"
+
+    if index_file.exists():
+
+        return FileResponse(
+            str(index_file)
+        )
+
+    return {
+        "ok": True,
+        "service": APP_NAME,
+        "message": "API is running",
+    }
 
 
-# =========================================================
-# LOCAL RUN
-# =========================================================
+# ============================================================
+# LOCAL DEVELOPMENT
+# ============================================================
 
 if __name__ == "__main__":
 
     import uvicorn
 
+    port = int(
+        os.getenv(
+            "PORT",
+            "8000",
+        )
+    )
+
     uvicorn.run(
-        "main:app",
+        "backend.main:app",
         host="0.0.0.0",
-        port=int(
-            os.getenv(
-                "PORT",
-                "8080",
-            )
-        ),
+        port=port,
         reload=False,
     )
