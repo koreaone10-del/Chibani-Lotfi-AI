@@ -9,7 +9,10 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+from pydantic import BaseModel, Field
 
 
 # ============================================================
@@ -18,7 +21,10 @@ from fastapi.staticfiles import StaticFiles
 
 APP_NAME = "Chibani Lotfi AI API"
 
-WORKER_API_KEY = os.getenv("WORKER_API_KEY", "")
+WORKER_API_KEY = os.getenv(
+    "WORKER_API_KEY",
+    ""
+)
 
 RENDER_CALLBACK_SECRET = os.getenv(
     "RENDER_CALLBACK_SECRET",
@@ -52,12 +58,22 @@ GITHUB_API_URL = os.getenv(
 
 
 # ============================================================
-# FRONTEND PATH
+# PATHS
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 FRONTEND_DIR = BASE_DIR / "frontend"
+
+VIDEO_DIR = BASE_DIR / "generated_videos"
+
+VIDEO_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+# Maximum uploaded video size: 100 MB
+MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 
 # ============================================================
@@ -66,7 +82,7 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 
 app = FastAPI(
     title=APP_NAME,
-    version="1.0.1",
+    version="1.0.2",
 )
 
 
@@ -80,13 +96,17 @@ cors_origins_raw = os.getenv(
 )
 
 if cors_origins_raw.strip() == "*":
+
     cors_origins = ["*"]
+
 else:
+
     cors_origins = [
         origin.strip()
         for origin in cors_origins_raw.split(",")
         if origin.strip()
     ]
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -107,9 +127,6 @@ JOBS: dict[str, dict] = {}
 # ============================================================
 # MODELS
 # ============================================================
-
-from pydantic import BaseModel, Field
-
 
 class CreateJob(BaseModel):
 
@@ -187,10 +204,12 @@ class WorkerCallback(BaseModel):
 # ============================================================
 
 def now() -> float:
+
     return time.time()
 
 
 def clamp_progress(value: int) -> int:
+
     return max(
         0,
         min(
@@ -282,7 +301,7 @@ def dispatch_to_github(
         body
     ).encode("utf-8")
 
-    request = urllib.request.Request(
+    github_request = urllib.request.Request(
 
         url,
 
@@ -312,7 +331,7 @@ def dispatch_to_github(
     try:
 
         with urllib.request.urlopen(
-            request,
+            github_request,
             timeout=30
         ) as response:
 
@@ -387,7 +406,10 @@ def health():
             bool(RENDER_CALLBACK_SECRET),
 
         "frontend_configured":
-            FRONTEND_DIR.exists()
+            FRONTEND_DIR.exists(),
+
+        "video_storage_configured":
+            VIDEO_DIR.exists()
     }
 
 
@@ -536,6 +558,247 @@ def get_job(
 
 
 # ============================================================
+# UPLOAD VIDEO FROM GITHUB WORKER
+# ============================================================
+
+@app.post(
+    "/api/worker/jobs/{job_id}/upload"
+)
+async def upload_worker_video(
+    job_id: str,
+    request: Request
+):
+
+    # --------------------------------------------------------
+    # Secret check
+    # --------------------------------------------------------
+
+    if not RENDER_CALLBACK_SECRET:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=
+                "RENDER_CALLBACK_SECRET "
+                "is not configured"
+        )
+
+
+    # --------------------------------------------------------
+    # Authorization
+    # --------------------------------------------------------
+
+    if not callback_authorized(request):
+
+        raise HTTPException(
+
+            status_code=401,
+
+            detail="Invalid callback secret"
+        )
+
+
+    # --------------------------------------------------------
+    # Job check
+    # --------------------------------------------------------
+
+    job = JOBS.get(
+        job_id
+    )
+
+    if not job:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Job not found"
+        )
+
+
+    # --------------------------------------------------------
+    # Content type check
+    # --------------------------------------------------------
+
+    content_type = request.headers.get(
+        "Content-Type",
+        ""
+    ).lower()
+
+    if "video/mp4" not in content_type:
+
+        raise HTTPException(
+
+            status_code=415,
+
+            detail="Expected video/mp4"
+        )
+
+
+    # --------------------------------------------------------
+    # Output path
+    # --------------------------------------------------------
+
+    output_path = (
+        VIDEO_DIR /
+        f"{job_id}.mp4"
+    )
+
+
+    total_size = 0
+
+
+    # --------------------------------------------------------
+    # Stream upload
+    # --------------------------------------------------------
+
+    try:
+
+        with output_path.open(
+            "wb"
+        ) as video_file:
+
+            async for chunk in request.stream():
+
+                if not chunk:
+                    continue
+
+                total_size += len(chunk)
+
+                if total_size > MAX_VIDEO_SIZE:
+
+                    video_file.close()
+
+                    if output_path.exists():
+                        output_path.unlink()
+
+                    raise HTTPException(
+
+                        status_code=413,
+
+                        detail=
+                            "Video file is too large"
+                    )
+
+                video_file.write(
+                    chunk
+                )
+
+    except HTTPException:
+
+        raise
+
+    except Exception as exc:
+
+        if output_path.exists():
+            output_path.unlink()
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=
+                f"Video upload failed: {exc}"
+        )
+
+
+    # --------------------------------------------------------
+    # Empty file check
+    # --------------------------------------------------------
+
+    if total_size <= 0:
+
+        if output_path.exists():
+            output_path.unlink()
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Uploaded video is empty"
+        )
+
+
+    # --------------------------------------------------------
+    # Public video URL
+    # --------------------------------------------------------
+
+    output_url = (
+        f"/api/jobs/{job_id}/video"
+    )
+
+
+    # --------------------------------------------------------
+    # Update job
+    # --------------------------------------------------------
+
+    job["output_url"] = output_url
+
+    job["updated_at"] = now()
+
+    job["stage"] = "video_uploaded"
+
+
+    # --------------------------------------------------------
+    # Response
+    # --------------------------------------------------------
+
+    return {
+
+        "ok": True,
+
+        "job_id":
+            job_id,
+
+        "size":
+            total_size,
+
+        "output_url":
+            output_url
+    }
+
+
+# ============================================================
+# SERVE GENERATED VIDEO
+# ============================================================
+
+@app.get(
+    "/api/jobs/{job_id}/video"
+)
+def get_job_video(
+    job_id: str
+):
+
+    video_path = (
+        VIDEO_DIR /
+        f"{job_id}.mp4"
+    )
+
+
+    if not video_path.exists():
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Video not found"
+        )
+
+
+    return FileResponse(
+
+        path=str(
+            video_path
+        ),
+
+        media_type="video/mp4",
+
+        filename=f"{job_id}.mp4"
+    )
+
+
+# ============================================================
 # GITHUB WORKER CALLBACK
 # ============================================================
 
@@ -551,6 +814,10 @@ def worker_callback(
     request: Request
 ):
 
+    # --------------------------------------------------------
+    # Secret check
+    # --------------------------------------------------------
+
     if not RENDER_CALLBACK_SECRET:
 
         raise HTTPException(
@@ -561,6 +828,11 @@ def worker_callback(
                 "RENDER_CALLBACK_SECRET "
                 "is not configured"
         )
+
+
+    # --------------------------------------------------------
+    # Authorization
+    # --------------------------------------------------------
 
     if not callback_authorized(
         request
@@ -573,6 +845,11 @@ def worker_callback(
             detail=
                 "Invalid callback secret"
         )
+
+
+    # --------------------------------------------------------
+    # Job lookup
+    # --------------------------------------------------------
 
     job = JOBS.get(
         job_id
@@ -587,15 +864,29 @@ def worker_callback(
             detail="Job not found"
         )
 
-    job["status"] = update.status
+
+    # --------------------------------------------------------
+    # Update status
+    # --------------------------------------------------------
+
+    job["status"] = (
+        update.status
+    )
 
     job["progress"] = clamp_progress(
         update.progress
     )
 
-    job["stage"] = update.stage
+    job["stage"] = (
+        update.stage
+    )
 
     job["updated_at"] = now()
+
+
+    # --------------------------------------------------------
+    # Output URL
+    # --------------------------------------------------------
 
     if update.output_url:
 
@@ -603,11 +894,21 @@ def worker_callback(
             update.output_url
         )
 
+
+    # --------------------------------------------------------
+    # Error
+    # --------------------------------------------------------
+
     if update.error:
 
         job["error"] = (
             update.error
         )
+
+
+    # --------------------------------------------------------
+    # Completed
+    # --------------------------------------------------------
 
     if update.status == "completed":
 
@@ -619,6 +920,11 @@ def worker_callback(
             "completed"
         )
 
+
+    # --------------------------------------------------------
+    # Failed
+    # --------------------------------------------------------
+
     elif update.status == "failed":
 
         job["progress"] = 100
@@ -628,6 +934,7 @@ def worker_callback(
             or
             "failed"
         )
+
 
     return {
 
@@ -643,7 +950,12 @@ def worker_callback(
             job["progress"],
 
         "stage":
-            job["stage"]
+            job["stage"],
+
+        "output_url":
+            job.get(
+                "output_url"
+            )
     }
 
 
@@ -669,6 +981,7 @@ def worker_next_job(
             detail="Invalid worker key"
         )
 
+
     for job in JOBS.values():
 
         if job.get(
@@ -688,6 +1001,7 @@ def worker_next_job(
             job["updated_at"] = now()
 
             return job
+
 
     return None
 
@@ -719,6 +1033,7 @@ def update_job_from_worker(
             detail="Invalid worker key"
         )
 
+
     job = JOBS.get(
         job_id
     )
@@ -731,6 +1046,7 @@ def update_job_from_worker(
 
             detail="Job not found"
         )
+
 
     job["status"] = (
         update.status
@@ -746,17 +1062,20 @@ def update_job_from_worker(
 
     job["updated_at"] = now()
 
+
     if update.output_url:
 
         job["output_url"] = (
             update.output_url
         )
 
+
     if update.error:
 
         job["error"] = (
             update.error
         )
+
 
     return {
 
@@ -787,7 +1106,23 @@ def delete_job(
             detail="Job not found"
         )
 
+
+    # Delete associated video too
+    video_path = (
+        VIDEO_DIR /
+        f"{job_id}.mp4"
+    )
+
+    if video_path.exists():
+
+        try:
+            video_path.unlink()
+        except Exception:
+            pass
+
+
     del JOBS[job_id]
+
 
     return {
 
@@ -802,24 +1137,16 @@ def delete_job(
 # FRONTEND STATIC FILES
 #
 # IMPORTANT:
-# Serve the ENTIRE frontend directory.
-#
-# This fixes:
-#   /style.css
-#   /app.js
-#   /script.js
-#   /assets/*
-#   favicon
-#   images
-#   etc.
-#
+# API routes are defined BEFORE this mount.
 # ============================================================
 
 if FRONTEND_DIR.exists():
 
     assets_dir = (
-        FRONTEND_DIR / "assets"
+        FRONTEND_DIR /
+        "assets"
     )
+
 
     if assets_dir.exists():
 
@@ -836,21 +1163,7 @@ if FRONTEND_DIR.exists():
             name="assets"
         )
 
-    # --------------------------------------------------------
-    # MAIN FRONTEND
-    # --------------------------------------------------------
-    #
-    # IMPORTANT:
-    # This must be AFTER the API routes.
-    #
-    # html=True means:
-    #   /              -> index.html
-    #
-    # And also allows:
-    #   /style.css
-    #   /app.js
-    #   /images/...
-    #
+
     app.mount(
 
         "/",
