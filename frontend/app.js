@@ -17,66 +17,100 @@ let pageVisible = true;
 ========================================================= */
 
 function headers() {
+
   return {
     "Content-Type": "application/json"
   };
+
 }
 
 
-async function api(path, options = {}) {
+async function api(
+  path,
+  options = {}
+) {
 
-  const controller = new AbortController();
+  const controller =
+    new AbortController();
 
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, REQUEST_TIMEOUT);
+  const timeout =
+    setTimeout(
+      () => {
+        controller.abort();
+      },
+      REQUEST_TIMEOUT
+    );
+
 
   try {
 
-    const res = await fetch(
-      API_BASE_URL + path,
-      {
-        ...options,
+    const res =
+      await fetch(
+        API_BASE_URL + path,
+        {
+          ...options,
 
-        headers: {
-          ...headers(),
-          ...(options.headers || {})
-        },
+          headers: {
+            ...headers(),
+            ...(options.headers || {})
+          },
 
-        signal: controller.signal
-      }
-    );
+          signal:
+            controller.signal
+        }
+      );
+
 
     if (!res.ok) {
 
       let message = "";
 
       try {
-        message = await res.text();
+
+        message =
+          await res.text();
+
       } catch {
+
         message = "";
+
       }
 
+
       throw new Error(
-        message || `HTTP ${res.status}`
+        message ||
+        `HTTP ${res.status}`
       );
+
     }
+
 
     return await res.json();
 
+
   } catch (error) {
 
-    if (error.name === "AbortError") {
-      throw new Error("انتهت مهلة الاتصال بالخادم.");
+    if (
+      error.name ===
+      "AbortError"
+    ) {
+
+      throw new Error(
+        "انتهت مهلة الاتصال بالخادم."
+      );
+
     }
 
+
     throw error;
+
 
   } finally {
 
     clearTimeout(timeout);
 
   }
+
 }
 
 
@@ -86,33 +120,63 @@ async function api(path, options = {}) {
 
 async function ping() {
 
-  const state = $("apiState");
+  const state =
+    $("apiState");
 
-  if (!state) return;
+
+  if (!state) {
+    return;
+  }
+
 
   try {
 
-    await api("/health");
+    await api(
+      "/health"
+    );
 
-    state.textContent = "ONLINE";
 
-    const pill = state.closest(".live-pill");
+    state.textContent =
+      "ONLINE";
+
+
+    const pill =
+      state.closest(
+        ".live-pill"
+      );
+
 
     if (pill) {
-      pill.classList.add("online");
+
+      pill.classList.add(
+        "online"
+      );
+
     }
+
 
   } catch {
 
-    state.textContent = "OFFLINE";
+    state.textContent =
+      "OFFLINE";
 
-    const pill = state.closest(".live-pill");
+
+    const pill =
+      state.closest(
+        ".live-pill"
+      );
+
 
     if (pill) {
-      pill.classList.remove("online");
+
+      pill.classList.remove(
+        "online"
+      );
+
     }
 
   }
+
 }
 
 
@@ -120,7 +184,9 @@ async function ping() {
    CREATE VIDEO
 ========================================================= */
 
-const createForm = $("createForm");
+const createForm =
+  $("createForm");
+
 
 if (createForm) {
 
@@ -130,30 +196,44 @@ if (createForm) {
 
       event.preventDefault();
 
-      const message = $("message");
-      const button = createForm.querySelector(
-        'button[type="submit"]'
-      );
+
+      const message =
+        $("message");
+
+
+      const button =
+        createForm.querySelector(
+          'button[type="submit"]'
+        );
+
 
       const subject =
-        $("subject")?.value.trim() || "";
+        $("subject")?.value.trim() ||
+        "";
+
 
       if (!subject) {
 
         if (message) {
+
           message.textContent =
             "اكتب فكرة الفيديو أولاً.";
+
         }
+
 
         $("subject")?.focus();
 
         return;
+
       }
 
 
       if (message) {
+
         message.textContent =
           "جاري إرسال المهمة إلى محرك الذكاء الاصطناعي...";
+
       }
 
 
@@ -161,23 +241,36 @@ if (createForm) {
 
         button.disabled = true;
 
-        button.classList.add("loading");
+        button.classList.add(
+          "loading"
+        );
+
 
         const originalText =
           button.dataset.originalText ||
-          button.querySelector(".btn-text")?.textContent ||
+          button.querySelector(
+            ".btn-text"
+          )?.textContent ||
           "إنشاء الفيديو";
+
 
         button.dataset.originalText =
           originalText;
 
+
         const text =
-          button.querySelector(".btn-text");
+          button.querySelector(
+            ".btn-text"
+          );
+
 
         if (text) {
+
           text.textContent =
             "جاري الإرسال...";
+
         }
+
       }
 
 
@@ -188,28 +281,40 @@ if (createForm) {
           subject,
 
           language:
-            $("language")?.value || "ar",
+            $("language")?.value ||
+            "ar",
 
           aspect_ratio:
-            $("aspect_ratio")?.value || "9:16",
+            $("aspect_ratio")?.value ||
+            "9:16",
 
           duration:
-            Number($("duration")?.value || 30),
+            Number(
+              $("duration")?.value ||
+              30
+            ),
 
           video_source:
-            $("video_source")?.value || "pexels",
+            $("video_source")?.value ||
+            "pexels",
 
           voice:
-            $("voice")?.value || "edge",
+            $("voice")?.value ||
+            "edge",
 
           subtitles:
-            Boolean($("subtitles")?.checked),
+            Boolean(
+              $("subtitles")?.checked
+            ),
 
           subtitle_provider:
-            $("subtitle_provider")?.value || "edge",
+            $("subtitle_provider")?.value ||
+            "edge",
 
           music:
-            Boolean($("music")?.checked)
+            Boolean(
+              $("music")?.checked
+            )
 
         };
 
@@ -219,7 +324,10 @@ if (createForm) {
           {
             method: "POST",
 
-            body: JSON.stringify(payload)
+            body:
+              JSON.stringify(
+                payload
+              )
           }
         );
 
@@ -229,18 +337,26 @@ if (createForm) {
           message.textContent =
             "تمت إضافة المهمة بنجاح ✓ جاري تجهيز الفيديو...";
 
-          message.classList.add("success");
+          message.classList.add(
+            "success"
+          );
 
         }
 
 
-        $("subject").value = "";
+        $("subject").value =
+          "";
+
 
         const counter =
           $("promptCount");
 
+
         if (counter) {
-          counter.textContent = "0";
+
+          counter.textContent =
+            "0";
+
         }
 
 
@@ -255,7 +371,9 @@ if (createForm) {
             "فشل إرسال المهمة: " +
             error.message;
 
-          message.classList.remove("success");
+          message.classList.remove(
+            "success"
+          );
 
         }
 
@@ -263,12 +381,20 @@ if (createForm) {
 
         if (button) {
 
-          button.disabled = false;
+          button.disabled =
+            false;
 
-          button.classList.remove("loading");
+
+          button.classList.remove(
+            "loading"
+          );
+
 
           const text =
-            button.querySelector(".btn-text");
+            button.querySelector(
+              ".btn-text"
+            );
+
 
           if (text) {
 
@@ -277,10 +403,14 @@ if (createForm) {
               "إنشاء الفيديو";
 
           }
+
         }
+
       }
+
     }
   );
+
 }
 
 
@@ -291,15 +421,21 @@ if (createForm) {
 const refreshButton =
   $("refresh");
 
+
 if (refreshButton) {
 
   refreshButton.addEventListener(
     "click",
     async () => {
 
-      refreshButton.disabled = true;
+      refreshButton.disabled =
+        true;
 
-      refreshButton.classList.add("loading");
+
+      refreshButton.classList.add(
+        "loading"
+      );
+
 
       try {
 
@@ -307,14 +443,19 @@ if (refreshButton) {
 
       } finally {
 
-        refreshButton.disabled = false;
+        refreshButton.disabled =
+          false;
 
-        refreshButton.classList.remove("loading");
+
+        refreshButton.classList.remove(
+          "loading"
+        );
 
       }
 
     }
   );
+
 }
 
 
@@ -325,7 +466,9 @@ if (refreshButton) {
 function jobHTML(job) {
 
   const request =
-    job?.request || {};
+    job?.request ||
+    {};
+
 
   const subject =
     escapeHtml(
@@ -353,12 +496,20 @@ function jobHTML(job) {
       0,
       Math.min(
         100,
-        Number(job?.progress || 0)
+        Number(
+          job?.progress ||
+          0
+        )
       )
     );
 
 
+  /* =======================================================
+     VIDEO OUTPUT
+  ======================================================= */
+
   let output = "";
+
 
   if (job?.output_url) {
 
@@ -367,51 +518,111 @@ function jobHTML(job) {
         job.output_url
       );
 
+
     output = `
-      <a
-        class="download"
-        href="${safeUrl}"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        فتح الفيديو ↗
-      </a>
+
+      <div class="job-video-wrap">
+
+        <video
+          class="job-video"
+          controls
+          playsinline
+          preload="metadata"
+          src="${safeUrl}"
+          style="width:100%;max-width:100%;display:block;border-radius:16px;margin-top:14px;"
+        ></video>
+
+
+        <div
+          class="job-video-actions"
+          style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;"
+        >
+
+          <a
+            class="download"
+            href="${safeUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            فتح الفيديو ↗
+          </a>
+
+
+          <a
+            class="download"
+            href="${safeUrl}"
+            download
+          >
+            تحميل الفيديو ↓
+          </a>
+
+        </div>
+
+      </div>
+
     `;
+
   }
 
 
+  /* =======================================================
+     ERROR
+  ======================================================= */
+
   let error = "";
+
 
   if (job?.error) {
 
     error = `
+
       <small class="job-error">
-        ${escapeHtml(job.error)}
+
+        ${escapeHtml(
+          job.error
+        )}
+
       </small>
+
     `;
+
   }
 
 
+  /* =======================================================
+     JOB CARD
+  ======================================================= */
+
   return `
+
     <article class="job">
 
       <div class="jobHead">
 
         <strong>
+
           ${subject}
+
         </strong>
 
+
         <span class="status">
+
           ${status}
+
         </span>
 
       </div>
 
 
       <small>
+
         ${stage}
+
         ·
+
         ${progress}%
+
       </small>
 
 
@@ -430,10 +641,13 @@ function jobHTML(job) {
 
       ${output}
 
+
       ${error}
 
     </article>
+
   `;
+
 }
 
 
@@ -441,24 +655,40 @@ function jobHTML(job) {
    LOAD JOBS
 ========================================================= */
 
-async function loadJobs(force = false) {
+async function loadJobs(
+  force = false
+) {
 
-  if (loadingJobs && !force) {
+  if (
+    loadingJobs &&
+    !force
+  ) {
+
     return;
+
   }
 
-  if (!pageVisible && !force) {
+
+  if (
+    !pageVisible &&
+    !force
+  ) {
+
     return;
+
   }
 
 
-  loadingJobs = true;
+  loadingJobs =
+    true;
 
 
   try {
 
     const jobs =
-      await api("/api/jobs");
+      await api(
+        "/api/jobs"
+      );
 
 
     const container =
@@ -466,7 +696,9 @@ async function loadJobs(force = false) {
 
 
     if (!container) {
+
       return;
+
     }
 
 
@@ -476,12 +708,18 @@ async function loadJobs(force = false) {
     ) {
 
       container.innerHTML = `
+
         <div class="empty-jobs">
+
           لا توجد مهام بعد.
+
         </div>
+
       `;
 
+
       return;
+
     }
 
 
@@ -496,8 +734,11 @@ async function loadJobs(force = false) {
     const container =
       $("jobs");
 
+
     if (!container) {
+
       return;
+
     }
 
 
@@ -506,21 +747,29 @@ async function loadJobs(force = false) {
       برسالة خطأ في كل polling.
     */
 
-    if (!container.children.length) {
+    if (
+      !container.children.length
+    ) {
 
       container.innerHTML = `
+
         <div class="empty-jobs">
+
           تعذر الاتصال بالخادم حالياً.
+
         </div>
+
       `;
 
     }
 
   } finally {
 
-    loadingJobs = false;
+    loadingJobs =
+      false;
 
   }
+
 }
 
 
@@ -534,7 +783,9 @@ function startPolling() {
 
 
   if (!pageVisible) {
+
     return;
+
   }
 
 
@@ -546,28 +797,37 @@ function startPolling() {
           document.hidden ||
           !pageVisible
         ) {
+
           return;
+
         }
+
 
         loadJobs();
 
       },
       POLL_INTERVAL
     );
+
 }
 
 
 function stopPolling() {
 
-  if (pollTimer !== null) {
+  if (
+    pollTimer !== null
+  ) {
 
     clearInterval(
       pollTimer
     );
 
-    pollTimer = null;
+
+    pollTimer =
+      null;
 
   }
+
 }
 
 
@@ -615,7 +875,9 @@ document.addEventListener(
    SAFE HTML
 ========================================================= */
 
-function escapeHtml(value) {
+function escapeHtml(
+  value
+) {
 
   return String(
     value ?? ""
@@ -626,29 +888,49 @@ function escapeHtml(value) {
       const map = {
 
         "&": "&amp;",
+
         "<": "&lt;",
+
         ">": "&gt;",
+
         '"': "&quot;",
+
         "'": "&#039;"
 
       };
+
 
       return map[char];
 
     }
   );
+
 }
 
 
-function escapeAttribute(value) {
+function escapeAttribute(
+  value
+) {
 
   return String(
     value ?? ""
   )
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    );
 
 }
 
